@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jeu de Mots 🎮</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; background-color: #f4f4f9; margin: 0; padding: 20px; }
+        .card { background: white; max-width: 450px; margin: 30px auto; padding: 20px; border-radius: 10px; box-shadow: 0px 4px 10px rgba(0,0,0,0.1); }
+        input, select, button { width: 90%; padding: 10px; margin: 8px 0; font-size: 16px; border-radius: 5px; border: 1px solid #ccc; box-sizing: border-box; }
+        button { background-color: #007bff; color: white; border: none; cursor: pointer; }
+        button:hover { background-color: #0056b3; }
+        .hidden { display: none; }
+        
+        #timer { font-size: 24px; color: #d9534f; font-weight: bold; transition: transform 0.2s; }
+        .timer-alert { animation: pulse 0.5s infinite alternate; color: #ff0000 !important; }
+        @keyframes pulse {
+            from { transform: scale(1); }
+            to { transform: scale(1.15); }
+        }
+
+        #letter-box { font-size: 35px; color: #d9822b; font-weight: bold; background: #fff3cd; display: inline-block; padding: 5px 20px; border-radius: 8px; margin: 10px 0; border: 1px solid #ffeeba; }
+        .input-group { text-align: left; margin: 10px 0; }
+        .input-group label { font-weight: bold; display: block; margin-bottom: 3px; color: #333; }
+        #status-msg { color: #28a745; font-weight: bold; margin-top: 10px; }
+        .valid-word { color: #28a745; font-weight: bold; }
+        .invalid-word { color: #d9534f; text-decoration: line-through; }
+        #player-list, #rooms-list { list-style-type: none; padding: 0; margin: 5px 0; font-weight: bold; color: #444; }
+        #player-list li, #rooms-list li { background: #e9ecef; margin: 4px auto; padding: 6px; width: 80%; border-radius: 4px; display: flex; justify-content: space-between; align-items: center; }
+        .room-item { background: #e2e8f0; cursor: pointer; padding: 8px; border-radius: 5px; margin: 5px 0; transition: background 0.2s; }
+        .room-item:hover { background: #cbd5e1; }
+        #highscore-list { list-style-type: none; padding: 0; margin: 5px 0; font-size: 14px; color: #333; }
+        #highscore-list li { background: #fff3cd; margin: 3px auto; padding: 4px; width: 80%; border-radius: 4px; border: 1px solid #ffeeba; }
+        .config-box { background: #eef2f7; padding: 10px; border-radius: 6px; margin: 10px 0; text-align: left; }
+        
+        .home-btn { 
+            background-color: #6c757d; 
+            display: inline-flex; 
+            align-items: center; 
+            justify-content: center; 
+            gap: 8px; 
+        }
+        .home-btn:hover { background-color: #5a6268; }
+
+        .btn-success { background-color: #28a745; width: auto; padding: 5px 10px; font-size: 14px; margin-left: 5px; }
+        .btn-danger { background-color: #dc3545; width: auto; padding: 5px 10px; font-size: 14px; margin-left: 5px; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h2>Jeu de Mots 🎮</h2>
+
+        <!-- ECRAN DE CONNEXION (PSEUDO) -->
+        <div id="login-screen">
+            <p>Entre ton pseudo pour commencer :</p>
+            <input type="text" id="username-input" placeholder="Ton pseudo..." />
+            <button id="join-btn">Valider</button>
+        </div>
+
+        <!-- ECRAN DE LISTE DES SALONS (LOBBIES) -->
+        <div id="lobbies-screen" class="hidden">
+            <h3>Salons disponibles 🚪</h3>
+            <div style="margin: 15px 0;">
+                <input type="text" id="room-name-input" placeholder="Nom de ton nouveau salon..." />
+                <button id="create-room-btn" style="background-color: #28a745;">Créer un salon ➕</button>
+            </div>
+            <p style="font-weight: bold; margin-top: 15px;">Salons actifs :</p>
+            <div id="rooms-container" style="max-height: 150px; overflow-y: auto;">
+                <p style="color: #777; font-style: italic;" id="no-rooms">Aucun salon disponible</p>
+            </div>
+            <div id="approval-status" style="margin-top: 10px; color: #d9822b; font-weight: bold;"></div>
+        </div>
+
+        <!-- SALON D'ATTENTE DE LA PARTIE (ROOM) -->
+        <div id="room-screen" class="hidden">
+            <h3 id="room-title-display">Salon</h3>
+            
+            <p style="margin: 5px 0; font-weight: bold;">Joueurs dans le salon :</p>
+            <ul id="player-list"></ul>
+
+            <div id="host-requests-container" style="margin: 10px 0; background: #fff3cd; padding: 8px; border-radius: 5px; display: none;">
+                <p style="margin: 0 0 5px 0; font-size: 14px; font-weight: bold; color: #856404;">Demandes d'accès :</p>
+                <div id="requests-list"></div>
+            </div>
+
+            <div class="config-box" id="host-config-box" style="margin-top: 15px;">
+                <label><strong>Plage de lettres (Hôte) :</strong></label>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <span>De :</span>
+                    <select id="start-letter" style="width: 35%;">
+                        <option value="A" selected>A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option><option value="E">E</option><option value="F">F</option><option value="G">G</option><option value="H">H</option><option value="I">I</option><option value="J">J</option><option value="K">K</option><option value="L">L</option><option value="M">M</option><option value="N">N</option><option value="O">O</option><option value="P">P</option><option value="Q">Q</option><option value="R">R</option><option value="S">S</option><option value="T">T</option><option value="U">U</option><option value="V">V</option><option value="W">W</option><option value="X">X</option><option value="Y">Y</option><option value="Z">Z</option>
+                    </select>
+                    <span>À :</span>
+                    <select id="end-letter" style="width: 35%;">
+                        <option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option><option value="E">E</option><option value="F">F</option><option value="G">G</option><option value="H">H</option><option value="I">I</option><option value="J">J</option><option value="K">K</option><option value="L">L</option><option value="M">M</option><option value="N">N</option><option value="O">O</option><option value="P">P</option><option value="Q">Q</option><option value="R">R</option><option value="S">S</option><option value="T">T</option><option value="U">U</option><option value="V">V</option><option value="W">W</option><option value="X">X</option><option value="Y">Y</option><option value="Z" selected>Z</option>
+                    </select>
+                </div>
+                <button id="start-btn" style="margin-top: 10px;">Lancer la partie 🚀</button>
+            </div>
+            <p id="waiting-host-msg" class="hidden" style="color: #666; font-style: italic;">En attente que l'hôte lance la partie...</p>
+
+            <button class="home-btn" id="leave-room-btn" style="margin-top: 10px;">🏠 Retour au salon</button>
+        </div>
+
+        <!-- ECRAN DE JEU -->
+        <div id="game-screen" class="hidden">
+            <div id="timer">Temps : 30s</div>
+            <p>Lettre imposée :</p>
+            <div id="letter-box">-</div>
+
+            <div id="categories-container"></div>
+
+            <button id="stop-btn" style="background-color: #d9534f; font-weight: bold; font-size: 18px; margin-top: 15px;">STOP ! 🛑</button>
+            <div id="status-msg"></div>
+        </div>
+
+        <!-- ECRAN DE FIN DE MANCHE -->
+        <div id="result-screen" class="hidden">
+            <h3 id="round-title">Fin de la manche ! 🛑</h3>
+            <p id="round-subtitle">Classement général et résultats :</p>
+            <div id="results-container" style="text-align: left; margin: 15px 0; font-size: 14px;"></div>
+            
+            <button id="next-round-btn">Manche suivante ➡️</button>
+            <button id="home-btn" class="home-btn">🏠 Retour au salon</button>
+        </div>
+    </div>
+
+    <!-- Script Socket.io -->
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        const socket = io();
+
+        // --- GESTION DES SONS (API Web Audio) ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playBeep(frequency = 440, duration = 0.1, type = 'sine') {
+            if (audioCtx.state === 'suspended') { audioCtx.resume(); }
+            let osc = audioCtx.createOscillator();
+            let gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.value = frequency;
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        function soundStart() {
+            playBeep(523.25, 0.15); // Do
+            setTimeout(() => playBeep(659.25, 0.15), 150); // Mi
+            setTimeout(() => playBeep(783.99, 0.3), 300);  // Sol
+        }
+
+        function soundStop() {
+            playBeep(200, 0.4, 'sawtooth'); // Gros gong grave
+        }
+
+        function soundVictory() {
+            playBeep(523.25, 0.1);
+            setTimeout(() => playBeep(659.25, 0.1), 100);
+            setTimeout(() => playBeep(783.99, 0.1), 200);
+            setTimeout(() => playBeep(1046.50, 0.4), 300); // Super fanfare finale
+        }
+        // ---------------------------------------
+
+        const loginScreen = document.getElementById('login-screen');
+        const lobbiesScreen = document.getElementById('lobbies-screen');
+        const roomScreen = document.getElementById('room-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const resultScreen = document.getElementById('result-screen');
+
+        const usernameInput = document.getElementById('username-input');
+        const joinBtn = document.getElementById('join-btn');
+        const roomNameInput = document.getElementById('room-name-input');
+        const createRoomBtn = document.getElementById('create-room-btn');
+        const roomsContainer = document.getElementById('rooms-container');
+        const approvalStatus = document.getElementById('approval-status');
+
+        const roomTitleDisplay = document.getElementById('room-title-display');
+        const playerList = document.getElementById('player-list');
+        const hostConfigBox = document.getElementById('host-config-box');
+        const waitingHostMsg = document.getElementById('waiting-host-msg');
+        const startBtn = document.getElementById('start-btn');
+        const leaveRoomBtn = document.getElementById('leave-room-btn');
+        const hostRequestsContainer = document.getElementById('host-requests-container');
+        const requestsList = document.getElementById('requests-list');
+
+        const startLetterSelect = document.getElementById('start-letter');
+        const endLetterSelect = document.getElementById('end-letter');
+
+        const timerDisplay = document.getElementById('timer');
+        const letterBox = document.getElementById('letter-box');
+        const categoriesContainer = document.getElementById('categories-container');
+        const stopBtn = document.getElementById('stop-btn');
+        const statusMsg = document.getElementById('status-msg');
+        const nextRoundBtn = document.getElementById('next-round-btn');
+        const homeBtn = document.getElementById('home-btn');
+        const resultsContainer = document.getElementById('results-container');
+        const roundTitle = document.getElementById('round-title');
+        const roundSubtitle = document.getElementById('round-subtitle');
+
+        let isUserHost = false;
+
+        joinBtn.addEventListener('click', () => {
+            const username = usernameInput.value.trim();
+            if (username) {
+                socket.emit('set-username', username);
+            } else {
+                alert("Entre un pseudo valide !");
+            }
+        });
+
+        socket.on('username-set', () => {
+            loginScreen.classList.add('hidden');
+            lobbiesScreen.classList.remove('hidden');
+        });
+
+        createRoomBtn.addEventListener('click', () => {
+            const roomName = roomNameInput.value.trim();
+            if (roomName) {
+                socket.emit('create-room', roomName);
+            } else {
+                alert("Entre un nom de salon valide !");
+            }
+        });
+
+        socket.on('update-rooms-list', (rooms) => {
+            roomsContainer.innerHTML = '';
+            if (rooms.length === 0) {
+                roomsContainer.innerHTML = '<p style="color: #777; font-style: italic;">Aucun salon disponible</p>';
+                return;
+            }
+            rooms.forEach(room => {
+                let div = document.createElement('div');
+                div.className = 'room-item';
+                div.textContent = "🏠 " + room.name + " (Hôte: " + room.host + " | " + room.playerCount + " joueur(s))";
+                div.addEventListener('click', () => {
+                    approvalStatus.textContent = "Demande envoyée pour rejoindre " + room.name + "...";
+                    socket.emit('request-join-room', room.name);
+                });
+                roomsContainer.appendChild(div);
+            });
+        });
+
+        socket.on('waiting-approval', (msg) => {
+            approvalStatus.textContent = msg;
+        });
+
+        socket.on('join-rejected', (msg) => {
+            approvalStatus.textContent = msg;
+        });
+
+        socket.on('room-error', (err) => {
+            alert(err);
+        });
+
+        socket.on('room-joined', (data) => {
+            lobbiesScreen.classList.add('hidden');
+            resultScreen.classList.add('hidden');
+            roomScreen.classList.remove('hidden');
+            roomTitleDisplay.textContent = "Salon : " + data.roomName;
+            isUserHost = data.isHost;
+
+            if (isUserHost) {
+                hostConfigBox.classList.remove('hidden');
+                waitingHostMsg.classList.add('hidden');
+            } else {
+                hostConfigBox.classList.add('hidden');
+                waitingHostMsg.classList.remove('hidden');
+                hostRequestsContainer.style.display = 'none';
+            }
+        });
+
+        socket.on('join-request', (reqData) => {
+            if (!isUserHost) return;
+            hostRequestsContainer.style.display = 'block';
+            let reqDiv = document.createElement('div');
+            reqDiv.style.margin = "5px 0";
+            
+            let span = document.createElement('span');
+            span.textContent = reqData.username + " veut entrer ";
+            
+            let btnAccept = document.createElement('button');
+            btnAccept.className = "btn-success";
+            btnAccept.textContent = "✔️";
+            btnAccept.onclick = function() {
+                socket.emit('accept-player', { socketId: reqData.socketId, username: reqData.username });
+                reqDiv.remove();
+                if (requestsList.children.length === 0) hostRequestsContainer.style.display = 'none';
+            };
+
+            let btnReject = document.createElement('button');
+            btnReject.className = "btn-danger";
+            btnReject.textContent = "✖️";
+            btnReject.onclick = function() {
+                socket.emit('reject-player', reqData.socketId);
+                reqDiv.remove();
+                if (requestsList.children.length === 0) hostRequestsContainer.style.display = 'none';
+            };
+
+            reqDiv.appendChild(span);
+            reqDiv.appendChild(btnAccept);
+            reqDiv.appendChild(btnReject);
+            requestsList.appendChild(reqDiv);
+        });
+
+        socket.on('update-room-players', (data) => {
+            playerList.innerHTML = '';
+            data.players.forEach(name => {
+                let li = document.createElement('li');
+                li.textContent = "👤 " + name;
+                playerList.appendChild(li);
+            });
+        });
+
+        leaveRoomBtn.addEventListener('click', () => {
+            socket.emit('return-to-lobby');
+        });
+
+        socket.on('back-to-lobbies', () => {
+            roomScreen.classList.add('hidden');
+            gameScreen.classList.add('hidden');
+            resultScreen.classList.add('hidden');
+            lobbiesScreen.classList.remove('hidden');
+            approvalStatus.textContent = '';
+        });
+
+        startBtn.addEventListener('click', () => {
+            const config = {
+                startLetter: startLetterSelect.value,
+                endLetter: endLetterSelect.value
+            };
+            socket.emit('start-game', config);
+        });
+
+        nextRoundBtn.addEventListener('click', () => {
+            socket.emit('next-round');
+        });
+
+        homeBtn.addEventListener('click', () => {
+            socket.emit('return-to-lobby');
+        });
+
+        socket.on('start-round', (data) => {
+            soundStart(); // Joue le son de démarrage de manche
+            roomScreen.classList.add('hidden');
+            resultScreen.classList.add('hidden');
+            gameScreen.classList.remove('hidden');
+            statusMsg.textContent = '';
+            stopBtn.disabled = false;
+            timerDisplay.classList.remove('timer-alert');
+
+            letterBox.textContent = data.letter;
+            timerDisplay.textContent = "Temps : " + data.timer + "s";
+
+            categoriesContainer.innerHTML = '';
+            data.categories.forEach(cat => {
+                const div = document.createElement('div');
+                div.className = 'input-group';
+                div.innerHTML = '<label>' + cat + ' :</label><input type="text" class="word-input" data-category="' + cat + '" placeholder="Commencant par ' + data.letter + '..." />';
+                categoriesContainer.appendChild(div);
+            });
+        });
+
+        socket.on('timer-update', (timeLeft) => {
+            timerDisplay.textContent = "Temps : " + timeLeft + "s";
+            if (timeLeft <= 5) {
+                timerDisplay.classList.add('timer-alert');
+                playBeep(880, 0.08); // Petit bip stressant à chaque seconde sous les 5s
+            }
+        });
+
+        stopBtn.addEventListener('click', () => {
+            soundStop(); // Son de STOP
+            const inputs = document.querySelectorAll('.word-input');
+            const answers = {};
+            inputs.forEach(input => {
+                answers[input.dataset.category] = input.value.trim();
+            });
+
+            socket.emit('stop-game', answers);
+            stopBtn.disabled = true;
+        });
+
+        socket.on('notification-stop', (msg) => {
+            roundTitle.textContent = msg;
+        });
+
+        socket.on('round-ended', (data) => {
+            gameScreen.classList.add('hidden');
+            resultScreen.classList.remove('hidden');
+            timerDisplay.classList.remove('timer-alert');
+
+            resultsContainer.innerHTML = '';
+            
+            let results = data.results;
+            let isGameOver = data.isGameOver;
+
+            if (isGameOver) {
+                soundVictory(); // Fanfare de fin de partie complète
+                roundTitle.textContent = "🏆 PARTIE TERMINÉE ! 🏆";
+                roundSubtitle.textContent = "Voici le grand classement final :";
+                nextRoundBtn.style.display = "none";
+            } else {
+                soundStop(); // Son de fin de manche
+                roundTitle.textContent = "Fin de la manche ! 🛑";
+                roundSubtitle.textContent = "Classement général et résultats :";
+                if (isUserHost) {
+                    nextRoundBtn.style.display = "block";
+                } else {
+                    nextRoundBtn.style.display = "none";
+                }
+            }
+
+            let sortedPlayers = Object.values(results).sort((a, b) => b.totalScore - a.totalScore);
+
+            sortedPlayers.forEach((player, index) => {
+                const playerDiv = document.createElement('div');
+                playerDiv.style.marginBottom = "15px";
+                playerDiv.style.padding = "10px";
+                playerDiv.style.background = isGameOver && index === 0 ? "#fff3cd" : "#f9f9f9";
+                playerDiv.style.borderRadius = "5px";
+                playerDiv.style.border = isGameOver && index === 0 ? "2px solid #ffc107" : "1px solid #ddd";
+                
+                let medal = index === 0 ? "🥇 " : (index === 1 ? "🥈 " : (index === 2 ? "🥉 " : ""));
+                playerDiv.innerHTML = "<strong>" + medal + "#" + (index + 1) + " " + player.username + "</strong> — Total : <span style='color: #007bff; font-weight: bold;'>" + player.totalScore + " pts</span> (Manche : +" + player.roundScore + ")";
+                
+                let ul = document.createElement('ul');
+                ul.style.margin = "5px 0 5px 15px";
+                for (let cat in player.answers) {
+                    let ans = player.answers[cat];
+                    let li = document.createElement('li');
+                    
+                    if (ans.valid) {
+                        li.innerHTML = cat + " : <span class='valid-word'>" + ans.word + " (+" + ans.points + ")</span>";
+                    } else {
+                        li.innerHTML = cat + " : <span class='invalid-word'>" + ans.word + "</span> (+0)";
+                    }
+                    ul.appendChild(li);
+                }
+                playerDiv.appendChild(ul);
+                resultsContainer.appendChild(playerDiv);
+            });
+        });
+    </script>
+</body>
+</html>

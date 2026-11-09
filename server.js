@@ -457,7 +457,7 @@ function endRound(roomName) {
     broadcastRoomsList();
 }
 
-const PORT = 3000;
+onst PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
-    console.log('Serveur lance sur le port 3000');
+  console.log(`Serveur lance sur le port `${PORT});
 });
